@@ -6,13 +6,21 @@
   "license": "GPLv3",
   "private": true,
   "dependencies": {
+    "@elastic/elasticsearch": "^7.6.1",
+    "@penfoldium/lyrics-search": "penfoldium/lyrics-search",
     "aws-sdk": "^2.650.0",
+    "axios": "^0.19.2",
     "body-parser": "^1.19.0",
     "chalk": "^3.0.0",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
-    "express-fileupload": "^1.1.6",
+    "express-fileupload": "^1.1.7-alpha.1",
+    "flexsearch": "nextapps-de/flexsearch",
+    "mysql2": "^2.1.0",
+    "mysql3": "^0.4.10",
+    "sequelize": "^5.21.5",
     "socket.io": "^2.3.0",
+    "sqlite3": "^4.1.1",
     "uuid": "^7.0.3"
   },
   "devDependencies": {

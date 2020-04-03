@@ -9,7 +9,9 @@
 
 <body>
   <form ref='uploadForm' id='uploadForm' action='/upload' method='post' encType="multipart/form-data">
-    <input type="text" name="name">
+    <input type="text" name="name" placeholder="name - required">
+    <input type="text" name="author" placeholder="author">
+    <input type="text" name="text" placeholder="text">
     <input type="file" name="song" />
     <input type='submit' value='Upload' />
   </form>
