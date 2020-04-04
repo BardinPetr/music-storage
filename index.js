@@ -3,10 +3,12 @@ const fileUpload = require('express-fileupload');
 const bodyParser = require('body-parser');
 const { Router } = require('express');
 const uuid = require('uuid').v4;
+const C = require('chalk');
 
 const Store = require('./src/store');
 const DB = require('./src/db');
 
+const AVAILABLE_TYPES = ['.mp3'];
 
 module.exports = class {
   constructor(express, credentials) {
@@ -27,14 +29,14 @@ module.exports = class {
     this.express.use(fileUpload());
     this.initRouter();
 
-    await this.store.init(this.credentials);
-    await this.db.init(this.credentials);
+    await Promise.all([this.store.init(this.credentials), this.db.init(this.credentials)]);
   }
 
   initRouter() {
     // TODO Implement your own user authorization algorithm
     this.router = new Router();
 
+    // Currently supporting only mp3
     this.router.post('/upload', async (req, res) => {
       if (!req.files || Object.keys(req.files).length === 0) {
         res.status(400).send('No files were specified');
@@ -50,7 +52,9 @@ module.exports = class {
           id: uuid(),
           ext: (/\.[\d\w]+$/).exec(req.files.song.name)[0],
         };
-        // await this.store.save(res.id, req.files.song.data);
+        if (!AVAILABLE_TYPES.includes(songData.ext)) {
+          res.status(400).send('Failed to fill missing information automaticly. Please, retry with filled author name or lyrics');
+        }
         try {
           const text = await this.lyricsSearch.search(encodeURI(songData.name));
           songData.text = text.lyrics.replace(/\[.*\]/, '');
@@ -61,32 +65,65 @@ module.exports = class {
             return;
           }
         }
-        res.status(200).send();
+        console.log(C`{blue Starting song processing}`);
+        if (await this.db.exists(songData)) {
+          console.log(C`{orange Found duplicate}`);
+          res.status(400).send('This song already exists in the storage');
+        } else {
+          await this.db.addSong(songData);
+          await this.store.save(songData.id, req.files.song.data);
+          res.status(200).send(songData);
+        }
       } catch (ex) {
+        console.log(C`{red.bold ${ex.message}}`);
         res.status(500).send(`Failed to save: ${ex.message}`);
       }
     });
 
     this.router.get('/search', async (req, res) => {
       try {
-        res.status(200).send(await this.db.searchComposition(req.query.text));
+        res.status(200).send(await this.db.searchSong(req.query.text));
+      } catch (ex) {
+        res.status(500).send(`Failed: ${ex.message}`);
+      }
+    });
+
+    this.router.get('/play.mp3', async (req, res) => {
+      const songInfo = await this.db.getSong(req.query.id);
+      console.log(songInfo);
+      if (!songInfo || songInfo.ext !== '.mp3') {
+        res.status(400).send('Not found such song in requested format');
+        return;
+      }
+      try {
+        res.status(200).send(await this.store.load(req.query.id));
       } catch (ex) {
         res.status(500).send(`Failed: ${ex.message}`);
       }
     });
 
     // uid - user id, sid - song id
-    this.router.post('/appendPlaylist', async (req, res) => {
+    this.router.post('/appendToPlaylist', async (req, res) => {
       try {
-        res.status(200).send(await this.db.appendPlaylist(req.query.uid, req.query.sid));
+        res.status(200).send(await this.db.appendToPlaylist(req.body.uid, req.body.sid));
       } catch (ex) {
         res.status(500).send(`Failed: ${ex.message}`);
       }
     });
 
-    this.router.post('/removePlaylist', async (req, res) => {
+    this.router.post('/removeFromPlaylist', async (req, res) => {
+      // if ((await this.db.getPlaylist(req.query.uid)).includes())
       try {
-        res.status(200).send(await this.db.removeFromPlaylist(req.query.uid, req.query.sid));
+        await this.db.removeFromPlaylist(req.body.uid, req.body.sid);
+        res.sendStatus(200);
+      } catch (ex) {
+        res.status(500).send(`Failed: ${ex.message}`);
+      }
+    });
+
+    this.router.get('/getPlaylist', async (req, res) => {
+      try {
+        res.status(200).send(await this.db.getPlaylist(req.query.id));
       } catch (ex) {
         res.status(500).send(`Failed: ${ex.message}`);
       }
@@ -100,9 +137,9 @@ module.exports = class {
       }
     });
 
-    this.router.get('/createUser', async (req, res) => {
+    this.router.post('/createUser', async (req, res) => {
       try {
-        res.status(200).send(await this.db.createUser(req.body));
+        res.status(200).send(await this.db.addUser(req.body));
       } catch (ex) {
         res.status(500).send(`Failed: ${ex.message}`);
       }

@@ -17,12 +17,12 @@ const musicStorage = new MS(app, {
 });
 
 (async () => {
-  await musicStorage.init();
+  musicStorage.init();
 
   const server = createServer(app);
   const io = SIO(server);
 
   musicStorage.setSIO(io);
 
-  server.listen(3000);
+  server.listen(3000, () => console.log('Server started'));
 })();
