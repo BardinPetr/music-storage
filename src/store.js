@@ -12,6 +12,8 @@ const bucketDefault = {
 module.exports = class {
   async init(awsParams = {}) {
     if (!awsParams.accessKeyId || !awsParams.secretAccessKey) throw new Error('No YC credentials specified');
+    console.log(C`[STORE] {yellow Started initializing of S3 store}`);
+
     this.s3 = new S3({
       credentials: new Credentials(awsParams.accessKeyId, awsParams.secretAccessKey),
       endpoint: 'storage.yandexcloud.net',
