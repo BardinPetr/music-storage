@@ -16,6 +16,8 @@
     },
     "rules": {
         "eol-last": 0,
-        "no-console": "off"
+        "no-console": "off",
+        "no-param-reassign": "warn",
+        "max-len": "off"
     }
 }

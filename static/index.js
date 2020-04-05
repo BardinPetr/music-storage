@@ -26,6 +26,12 @@ $(() => {
     $.post('removeFromPlaylist', { uid: $('#uid-input').val(), sid: $('#sid-input').val() });
   });
 
+  $('#user-create').click(() => {
+    $.post('createUser', { name: 'test' }, (data) => {
+      $('#user-result').html(JSON.stringify(data));
+    });
+  });
+
   $('#sid-play-submit').click(() => {
     $('#mp3_src').attr('src', `${window.location.origin}/play.mp3?id=${$('#sid-play-input').val()}`);
     $('#player').trigger('load');

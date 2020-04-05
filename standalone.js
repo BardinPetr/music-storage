@@ -1,6 +1,4 @@
-const { createServer } = require('http');
 const Express = require('express');
-const SIO = require('socket.io');
 const MS = require('./index');
 require('dotenv').config();
 
@@ -17,12 +15,6 @@ const musicStorage = new MS(app, {
 });
 
 (async () => {
-  musicStorage.init();
-
-  const server = createServer(app);
-  const io = SIO(server);
-
-  musicStorage.setSIO(io);
-
-  server.listen(3000, () => console.log('Server started'));
+  await musicStorage.init();
+  app.listen(3000, () => console.log('Server started'));
 })();

@@ -36,26 +36,52 @@ module.exports = class {
     console.log(C`[MYSQL] {green DB connected}`);
   }
 
+  /**
+   * Create new use in MYSQL
+   * @param {{name: string}} userData - user metadata
+   */
   async addUser(userData) {
     return Models.User.create(userData);
   }
 
+  /**
+   * Get user from MYSQL (includes it's own playlist)
+   * @param {string} userId - uuidv4 user id
+   */
   async getUser(userId) {
     return Models.User.findOne({ where: { id: userId }, include: 'songs' });
   }
 
+  /**
+   * Get all songs in MYSQL - only IDs, no metadata
+   */
   async getAllSongs() {
     return Models.Song.findAll({});
   }
 
+  /**
+   * Appends song to user's playlist in MYSQL
+   * @param {string} userId - uuidv4 user id
+   * @param {string} songId - uuidv4 song id
+   */
   async appendToPlaylist(userId, songId) {
     return (await Models.User.findByPk(userId)).addSong(await Models.Song.findByPk(songId));
   }
 
+  /**
+   * Removes song from user's playlist in MYSQL
+   * @param {string} userId - uuidv4 user id
+   * @param {string} songId - uuidv4 song id
+   */
   async removeFromPlaylist(userId, songId) {
     return (await Models.User.findByPk(userId)).removeSong(await Models.Song.findByPk(songId));
   }
 
+  /**
+   * Get playlist of user
+   * @param {string} userId - uuidv4 user id
+   * @returns array of getSong() result
+   */
   async getPlaylist(userId) {
     const data = await (await Models.User
       .findByPk(userId))
@@ -63,10 +89,18 @@ module.exports = class {
     return Promise.all(data.map((x) => this.getSong(x.id)));
   }
 
+  /**
+   * Stores song into MYSQL and ES
+   * @param {{id: string, name: string, author: string, title: string, text: string, ext: String}} songData - song metadata
+   */
   async addSong(songData) {
     return Promise.all([Models.Song.create(songData), this.indexSong(songData)]);
   }
 
+  /**
+   * Stores song into ES
+   * @param {%as in addSong%} body - song metadata
+   */
   async indexSong(body) {
     return this.es.index({
       index: ES_INDEX_NAME,
@@ -74,6 +108,11 @@ module.exports = class {
     });
   }
 
+  /**
+   * Run multiple Elasticsearch.js search queries and combines results
+   * @param  {...any} args - Elasticsearch.js search requests
+   * @returns {%es search query result%._source}
+   */
   async esSearch(...args) {
     try {
       const { body } = await this.es.msearch({
@@ -96,6 +135,10 @@ module.exports = class {
     }
   }
 
+  /**
+   * Get song metadata from ES by id
+   * @param {string} id  - uuidv4 song in
+   */
   async getSong(id) {
     return (await this.esSearch({
       query: {
@@ -104,6 +147,10 @@ module.exports = class {
     }))[0];
   }
 
+  /**
+   * Execute ES search
+   * @param {string} query - query for lyrics/name/author
+   */
   async searchSong(query) {
     return this.esSearch({
       query: {
@@ -120,6 +167,10 @@ module.exports = class {
     });
   }
 
+  /**
+   * Check if song with specified name+author already exists in ES
+   * @param {{id: string, title: string}} songData - minimum song data
+   */
   async exists(songData) {
     return (await this.getSong(songData.id))
       || (await this.esSearch({

@@ -20,10 +20,9 @@ module.exports = class {
     this.db = new DB();
   }
 
-  setSIO(socketio) {
-    this.sio = socketio;
-  }
-
+  /**
+   * Initializes all submodules
+   */
   async init() {
     this.express.use(bodyParser.urlencoded({ extended: true }));
     this.express.use(fileUpload());
@@ -68,11 +67,12 @@ module.exports = class {
         console.log(C`{blue Starting song processing}`);
         songData.title = `${songData.name} - ${songData.author}`;
         if (await this.db.exists(songData)) {
-          console.log(C`{orange Found duplicate}`);
           res.status(400).send('This song already exists in the storage');
+          console.log(C`{red Found duplicate}`);
         } else {
-          await this.db.addSong(songData);
-          await this.store.save(songData.id, req.files.song.data);
+          await Promise.all([
+            this.db.addSong(songData),
+            this.store.save(songData.id, req.files.song.data)]);
           res.status(200).send(songData);
         }
       } catch (ex) {
@@ -138,7 +138,7 @@ module.exports = class {
 
     this.router.post('/createUser', async (req, res) => {
       try {
-        res.send(await this.db.addUser(req.body));
+        res.send((await this.db.addUser(req.body)).id);
       } catch (ex) {
         res.status(500).send(`Failed: ${ex.message}`);
       }
