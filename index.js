@@ -66,6 +66,7 @@ module.exports = class {
           }
         }
         console.log(C`{blue Starting song processing}`);
+        songData.title = `${songData.name} - ${songData.author}`;
         if (await this.db.exists(songData)) {
           console.log(C`{orange Found duplicate}`);
           res.status(400).send('This song already exists in the storage');
@@ -82,7 +83,7 @@ module.exports = class {
 
     this.router.get('/search', async (req, res) => {
       try {
-        res.status(200).send(await this.db.searchSong(req.query.text));
+        res.send(await this.db.searchSong(req.query.text));
       } catch (ex) {
         res.status(500).send(`Failed: ${ex.message}`);
       }
@@ -90,13 +91,12 @@ module.exports = class {
 
     this.router.get('/play.mp3', async (req, res) => {
       const songInfo = await this.db.getSong(req.query.id);
-      console.log(songInfo);
       if (!songInfo || songInfo.ext !== '.mp3') {
         res.status(400).send('Not found such song in requested format');
         return;
       }
       try {
-        res.status(200).send(await this.store.load(req.query.id));
+        res.send(await this.store.load(req.query.id));
       } catch (ex) {
         res.status(500).send(`Failed: ${ex.message}`);
       }
@@ -105,14 +105,13 @@ module.exports = class {
     // uid - user id, sid - song id
     this.router.post('/appendToPlaylist', async (req, res) => {
       try {
-        res.status(200).send(await this.db.appendToPlaylist(req.body.uid, req.body.sid));
+        res.send(await this.db.appendToPlaylist(req.body.uid, req.body.sid));
       } catch (ex) {
         res.status(500).send(`Failed: ${ex.message}`);
       }
     });
 
     this.router.post('/removeFromPlaylist', async (req, res) => {
-      // if ((await this.db.getPlaylist(req.query.uid)).includes())
       try {
         await this.db.removeFromPlaylist(req.body.uid, req.body.sid);
         res.sendStatus(200);
@@ -123,7 +122,7 @@ module.exports = class {
 
     this.router.get('/getPlaylist', async (req, res) => {
       try {
-        res.status(200).send(await this.db.getPlaylist(req.query.id));
+        res.send(await this.db.getPlaylist(req.query.uid));
       } catch (ex) {
         res.status(500).send(`Failed: ${ex.message}`);
       }
@@ -131,7 +130,7 @@ module.exports = class {
 
     this.router.get('/getUser', async (req, res) => {
       try {
-        res.status(200).send(await this.db.getUser(req.query.id));
+        res.send(await this.db.getUser(req.query.id));
       } catch (ex) {
         res.status(500).send(`Failed: ${ex.message}`);
       }
@@ -139,7 +138,7 @@ module.exports = class {
 
     this.router.post('/createUser', async (req, res) => {
       try {
-        res.status(200).send(await this.db.addUser(req.body));
+        res.send(await this.db.addUser(req.body));
       } catch (ex) {
         res.status(500).send(`Failed: ${ex.message}`);
       }

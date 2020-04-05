@@ -1,3 +1,4 @@
+/* eslint-disable no-underscore-dangle */
 /* eslint-disable class-methods-use-this */
 const ESClient = require('@elastic/elasticsearch').Client;
 const { Sequelize } = require('sequelize');
@@ -5,69 +6,34 @@ const C = require('chalk');
 
 const initModels = require('./models/index.js');
 
-let Models;
+const ES_SETTINGS = require('./es_settings');
+const ES_MAPPING = require('./es_mapping');
 
 const ES_INDEX_NAME = 'music-storage';
-const ES_MAPPING = {
-  index: ES_INDEX_NAME,
-  body: {
-    properties: {
-      id: {
-        type: 'keyword',
-        // index: 'not_analyzed',
-      },
-      ext: {
-        type: 'keyword',
-        // index: 'not_analyzed',
-      },
-      name: {
-        type: 'text',
-      },
-      author: {
-        type: 'text',
-      },
-      lyrics: {
-        type: 'text',
-      },
-    },
-  },
-};
-
-let DBG_A; let
-  DBG_B;
+let Models;
 
 module.exports = class {
   async init(credentials) {
     console.log(C`[ES] {yellow Started initializing of ES}`);
     this.es = new ESClient({ node: credentials.esnodeAddr });
 
-    // await this.es.indices.delete({ index: ES_INDEX_NAME });
-    await this.es.indices.create({
-      index: ES_INDEX_NAME,
-    }).catch(() => console.log(C`[ES] {cyan Index found}`));
+    if (process.env.FORCE_DB_SYNC) await this.es.indices.delete({ index: ES_INDEX_NAME });
+    await this.es.indices
+      .create({ index: ES_INDEX_NAME })
+      .catch(() => console.log(C`[ES] {cyan Index found}`));
+    await this.es.indices.close({ index: ES_INDEX_NAME });
+    await this.es.indices.putSettings(ES_SETTINGS);
+    await this.es.indices.open({ index: ES_INDEX_NAME });
     await this.es.indices.putMapping(ES_MAPPING);
     await this.es.indices.refresh({ index: ES_INDEX_NAME });
-
     console.log(C`[ES] {green Elasticsearch connected}`);
-
 
     console.log(C`[DB] {yellow Started initializing of DB}`);
     this.sequelize = new Sequelize(credentials.mysqlConn);
     await this.sequelize.authenticate();
     Models = initModels(this.sequelize);
     await this.sequelize.sync({ force: process.env.FORCE_DB_SYNC });
-
     console.log(C`[MYSQL] {green DB connected}`);
-
-
-    DBG_A = '420f5fbc-e7a1-499e-a5b1-bcaaf6eba330';
-    DBG_B = '420f5fbc-e7a1-499e-a5b1-bcaaf6eba330';
-    await this.addUser({ id: DBG_A, name: 'test' });
-    await this.addSong({ id: DBG_B, ext: '.mp3' });
-    await this.appendToPlaylist(DBG_A, DBG_B);
-    // console.log(await this.getSong(DBG_A));
-
-    // console.log(await this.getPlaylist(DBG_A));
   }
 
   async addUser(userData) {
@@ -91,7 +57,10 @@ module.exports = class {
   }
 
   async getPlaylist(userId) {
-    return (await Models.User.findByPk(userId)).getSongs();
+    const data = await (await Models.User
+      .findByPk(userId))
+      .getSongs();
+    return Promise.all(data.map((x) => this.getSong(x.id)));
   }
 
   async addSong(songData) {
@@ -105,34 +74,47 @@ module.exports = class {
     });
   }
 
-  async esSearch(body) {
+  async esSearch(...args) {
     try {
-      return (await this.es.search({
-        index: ES_INDEX_NAME,
-        body,
-      })).body.hits.hits;
+      const { body } = await this.es.msearch({
+        body: args.reduce((p, c) => p.concat({ index: ES_INDEX_NAME }, c), []),
+      });
+      return body
+        .responses
+        .reduce((p, c) => p.concat(c.hits.hits), [])
+        .reduce((p, c) => {
+          if (!p[0].includes(c._source.id)) {
+            p[0] = p[0].concat(c._source.id);
+            p[1] = p[1].concat({ ...c._source, score: c._score });
+          }
+          return p;
+        }, [[], []])[1]
+        .sort((a, b) => b.score - a.score);
     } catch (ex) {
-      console.log(C`[ES] {red} Search failed: ${ex.message}`);
+      console.log(C`[ES] {red Search failed: ${ex}}`);
       return [];
     }
   }
 
   async getSong(id) {
-    const res = await this.esSearch({
+    return (await this.esSearch({
       query: {
         match: { id },
       },
-    });
-    // eslint-disable-next-line no-underscore-dangle
-    return res[0] ? res[0]._source : undefined;
+    }))[0];
   }
 
   async searchSong(query) {
-    return this.es.search({
-      index: ES_INDEX_NAME,
-      body: {
-        query: {
-          match: { name: query },
+    return this.esSearch({
+      query: {
+        match_phrase_prefix: {
+          title: query,
+        },
+      },
+    }, {
+      query: {
+        match_phrase_prefix: {
+          text: query,
         },
       },
     });
@@ -141,7 +123,14 @@ module.exports = class {
   async exists(songData) {
     return (await this.getSong(songData.id))
       || (await this.esSearch({
-
-      }));
+        query: {
+          match: {
+            title: {
+              query: songData.title,
+              operator: 'and',
+            },
+          },
+        },
+      })).length !== 0;
   }
 };

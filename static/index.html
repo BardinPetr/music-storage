@@ -5,6 +5,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Test website</title>
+
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+  <script src="index.js"></script>
 </head>
 
 <body>
@@ -16,10 +19,24 @@
     <input type='submit' value='Upload' />
   </form>
   <br>
-  <audio controls>
-    <source src="http://0.0.0.0:3000/play.mp3?id=420f5fbc-e7a1-499e-a5b1-bcaaf6eba330">
-    Your browser does not support the audio element.
+  <h5>Search song</h5>
+  <input id="search-text" type="text" name="name" placeholder="Type you search here" />
+  <p id="search-result"></p>
+  <br>
+  <h5>Play song by id</h5>
+  <input id="sid-play-input" type="text" placeholder="SONG ID" />
+  <button id="sid-play-submit">LOAD</button>
+  <audio controls id="player" preload="none">
+    <source id="mp3_src" type="audio/mp3" />
   </audio>
+  <h5>Your playlist</h5>
+  <input id="uid-input" type="text" placeholder="USER ID" />
+  <button id="uid-submit">SHOW</button>
+  <p id="playlist"></p>
+  <h6>Add/remove from playlist</h6>
+  <input id="sid-input" type="text" placeholder="SONG ID" />
+  <button id="sid-append">Add</button>
+  <button id="sid-delete">Del</button>
 </body>
 
 </html>

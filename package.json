@@ -17,10 +17,8 @@
     "express-fileupload": "^1.1.7-alpha.1",
     "flexsearch": "nextapps-de/flexsearch",
     "mysql2": "^2.1.0",
-    "mysql3": "^0.4.10",
     "sequelize": "^5.21.5",
     "socket.io": "^2.3.0",
-    "sqlite3": "^4.1.1",
     "uuid": "^7.0.3"
   },
   "devDependencies": {
