@@ -17,7 +17,7 @@ module.exports = class {
     console.log(C`[ES] {yellow Started initializing of ES}`);
     this.es = new ESClient({ node: credentials.esnodeAddr });
 
-    if (process.env.FORCE_DB_SYNC) await this.es.indices.delete({ index: ES_INDEX_NAME });
+    if (process.env.FORCE_DB_SYNC) try { await this.es.indices.delete({ index: ES_INDEX_NAME }); } catch (ex) {}
     await this.es.indices
       .create({ index: ES_INDEX_NAME })
       .catch(() => console.log(C`[ES] {cyan Index found}`));
